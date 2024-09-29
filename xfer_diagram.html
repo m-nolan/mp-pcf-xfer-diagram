@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html>
+    <head>
+        <title>d3 Network Diagram Example</title>
+        <script src="https://d3js.org/d3.v6.min.js"></script>
+    </head>
+    <body>
+        <div id="chart"></div>
+        <script>
+            d3.json("https://raw.githubusercontent.com/m-nolan/mn-state-campaign-finance/main/xfer_data_100000_2024-09.json").then(function(data) {
+                //  cribbed this from: https://observablehq.com/@d3/disjoint-force-directed-graph/2
+
+                //  chart dimensions
+                const width = 1500;
+                const height = 1000;
+
+                //  colors, links and nodes
+                const nodeActiveColor = "#9c672f";
+                const nodeInactiveColor = "#68a372";
+                const linkActiveColor = "#000";
+                const linkInactiveColor = "#999";
+
+                //  force simulation: create a function to "produce the same result"
+                const links = data.links.map(d => ({...d}));
+                const nodes = data.nodes.map(d => ({...d}));
+
+                //  make a cute lil SVG container
+                const svg = d3.select("#chart").append("svg")
+                    .attr("width", width)
+                    .attr("height", height)
+                    .attr("viewBox", [-width / 2, -height / 2, width, height])
+                    .attr("style", "max-width: 100%; height: auto;");
+
+                svg.append('defs')
+                    .append('defs')
+                        .append('marker')
+                            .attr('id', 'arrowhead')
+                            .attr("viewBox", "0 0 10 10")
+                            .attr('refX', 18)
+                            .attr('refY', 5)
+                            .attr('orient', 'auto')
+                            .attr('markerWidth', 3)
+                            .attr('markerHeight', 3)
+                            .attr('xoverflow','visible')
+                            .append('path')
+                                .attr('d','M 0 0 L 10 5 L 0 10')
+                                // .attr('fill',)
+                                .style('stroke', 'none')
+                    .append('defs')
+                        .append('filter')
+                            .attr('x',0)
+                            .attr('y',0)
+                            .attr('width',1)
+                            .attr('height',1)
+                            .attr('id','solid')
+                        .append('feFlood')
+                            .attr('floor-color','black')
+                            .attr('result','bg')
+                        .append('feMerge')
+                            .append('feMergeNode').attr('in','bg')
+                            .append('feMergeNode').attr('in','SourceGraphic')
+
+                //  links
+                const linkContainer = svg.append("g")
+                    .selectAll("g")
+                    .data(links)
+                    .join("g");
+
+                const link = linkContainer.append("line")
+                    .attr("stroke", linkInactiveColor)
+                    .attr("stroke-opacity", 0.6)
+                    .attr("stroke-width", 4)
+                    // .attr("class", "links")
+                    .attr("id", (d, i) => `link${i}`)
+                    .attr("marker-end", "url(#arrowhead)")
+                    .on('click',linkClicked);
+
+                const linkTextBox = linkContainer.append('rect')
+                    .attr('width',50)
+                    .attr('height',20)
+                    .attr('rx',5)
+                    .attr('fill','black')
+                    .attr('opacity',0)
+                    .attr('pointer-events','none');
+
+                const linkText = linkContainer.append('text')
+                    .text(d => postfixMoneyStr(d.value))
+                        .attr('text-anchor','middle')
+                        .attr('stroke','white')
+                        .attr('fill','white')
+                        .attr('opacity',0)
+                        .attr('pointer-events','none'); //  initially invisible, becomes visible on click (hopefully)
+
+                //  nodes
+                const nodeContainer = svg.append("g")
+                    .selectAll("g")
+                    .data(nodes)
+                    .join("g");
+
+                const node = nodeContainer.append("circle")
+                    .attr("r",10)
+                    .attr("fill",nodeInactiveColor)
+                    // .attr("opacity",0.6)
+                    .on('click',nodeClicked)
+                    .on('mouseover',nodeMouseover)
+                    .on('mouseout',nodeMouseout);
+
+                const nodeText = nodeContainer.append("text")
+                    .text(d => d.name)
+                        .attr('filter','url(#solid)')
+                        .attr('dx',12)
+                        .attr('dy',-8)
+                        .attr('opacity',0)
+                        .attr('pointer-events','none'); //  initially invisible, becomes visible on click (hopefully)
+
+                //  create a simulation with a few forces to push nodes around
+                const simulation = d3.forceSimulation(nodes)
+                    .force("link", d3.forceLink(links).id(d => d.id).iterations(2).distance(50))
+                    .force("charge", d3.forceManyBody().strength(-300))
+                    .force("x", d3.forceX())
+                    .force("y", d3.forceY());
+
+                //  drag show
+                node.call(d3.drag()
+                    .on("start", dragstarted)
+                    .on("drag", dragged)
+                    .on("end", dragended));
+
+                //  set position attr of links, nodes each time the simulation ticks over
+                simulation.on("tick", () => {
+                    link
+                        // .attr('transform', d => `translate(${d.x},${d.y})`);
+                        .attr("x1", d => d.source.x)
+                        .attr("y1", d => d.source.y)
+                        .attr("x2", d => d.target.x)
+                        .attr("y2", d => d.target.y);
+
+                    linkTextBox
+                        .attr("x", d => (d.source.x + d.target.x)/2 - 25)
+                        .attr("y", d => (d.source.y + d.target.y)/2 - 10);
+
+                    linkText
+                        .attr("x", d => (d.source.x + d.target.x)/2)
+                        .attr("y", d => (d.source.y + d.target.y)/2 + 5);
+                    
+                    nodeContainer
+                        .attr('transform', d => `translate(${d.x},${d.y})`);
+                });
+
+                function postfixMoneyStr(v) {
+                    let d = Math.log10(v)/3;
+                    if (d < 1) {
+                        return `\$${v}`;
+                    } else if (1 <= d & d < 2) {
+                        return `\$${Math.round(v/(1e3))}K`;
+                    } else if (2 <= d & d < 3) {
+                        return `\$${Math.round(v/(1e6))}M`;
+                    } else if (3 <= d & d < 4) {
+                        return `\$${Math.round(v/(1e9))}B`;
+                    } else {
+                        return `\$${v}`;
+                    }
+                }
+
+                function nodeClicked(event, d) {
+                    if (event.defaultPrevented) return;
+                    if (d.toggle == null) {    //  hasn't been clicked on yet
+                        d.toggle = true;
+                    } else {
+                        d.toggle = d.toggle? false : true;
+                    };
+                    d.active = d.toggle;
+                    nodeUpdate(d);
+                    d3.select(this.parentNode).raise();
+                }
+
+                function nodeMouseover(event, d) {
+                    if (d.toggle) {
+                        // do nothing
+                    } else {
+                        d.active = true;
+                        nodeUpdate(d);
+                        d3.select(this.parentNode).raise();
+                    };
+                }
+
+                function nodeMouseout(event, d) {
+                    if (d.toggle) {
+                        // do nothing
+                    } else {
+                        d.active = false;
+                        nodeUpdate(d);
+                    };
+                }
+
+                function nodeUpdate(d) {
+                    node
+                        .attr('fill', d => d.active? nodeActiveColor : nodeInactiveColor);
+
+                    nodeText
+                        .attr('opacity', d => d.active? 1 : 0);
+                }
+
+                function linkClicked(event, d) {
+                    var active = d.active? false : true;
+                    d.active = active;
+
+                    link
+                        .attr('stroke', d => d.active? linkActiveColor : linkInactiveColor)
+                        .attr('stroke-opacity', d => d.active? 1 : 0.6);
+
+                    linkTextBox
+                        .attr('opacity',d => d.active? 0.7 : 0);
+
+                    linkText
+                        .attr('opacity',d => d.active? 1 : 0);
+
+                    d3.select(this.parentNode).raise();
+                };
+
+                //  restarts the simulation when drag starts, fixes the subject position
+                function dragstarted(event, d) {
+                    if (!event.active) simulation.alphaTarget(0.3).restart();
+                    d.fx = d.x;
+                    d.fy = d.y;
+                }
+
+                function dragged(event, d) {
+                    d.fx = event.x;
+                    d.fy = event.y;
+                }
+
+                function dragended(event, d) {
+                    if (!event.active) simulation.alphaTarget(0);
+                    d.fx = null;
+                    d.fy = null;
+                }
+
+            });
+        </script>
+    </body>
+</html>
