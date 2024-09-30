@@ -11,14 +11,20 @@
                 //  cribbed this from: https://observablehq.com/@d3/disjoint-force-directed-graph/2
 
                 //  chart dimensions
-                const width = 1500;
-                const height = 1000;
+                const width = 800;
+                const height = 600;
 
                 //  colors, links and nodes
                 const nodeActiveColor = "#9c672f";
                 const nodeInactiveColor = "#68a372";
                 const linkActiveColor = "#000";
                 const linkInactiveColor = "#999";
+                const linkActiveOpacity = 1;
+                const linkInactiveOpacity = 0.6;
+                const textActiveOpacity = 1;
+                const textInactiveOpacity = 0;
+                const textBoxActiveOpacity = 0.7;
+                const textBoxInactiveOpacity = 0;
 
                 //  force simulation: create a function to "produce the same result"
                 const links = data.links.map(d => ({...d}));
@@ -36,7 +42,7 @@
                         .append('marker')
                             .attr('id', 'arrowhead')
                             .attr("viewBox", "0 0 10 10")
-                            .attr('refX', 18)
+                            .attr('refX', 17)
                             .attr('refY', 5)
                             .attr('orient', 'auto')
                             .attr('markerWidth', 3)
@@ -46,19 +52,6 @@
                                 .attr('d','M 0 0 L 10 5 L 0 10')
                                 // .attr('fill',)
                                 .style('stroke', 'none')
-                    .append('defs')
-                        .append('filter')
-                            .attr('x',0)
-                            .attr('y',0)
-                            .attr('width',1)
-                            .attr('height',1)
-                            .attr('id','solid')
-                        .append('feFlood')
-                            .attr('floor-color','black')
-                            .attr('result','bg')
-                        .append('feMerge')
-                            .append('feMergeNode').attr('in','bg')
-                            .append('feMergeNode').attr('in','SourceGraphic')
 
                 //  links
                 const linkContainer = svg.append("g")
@@ -73,7 +66,9 @@
                     // .attr("class", "links")
                     .attr("id", (d, i) => `link${i}`)
                     .attr("marker-end", "url(#arrowhead)")
-                    .on('click',linkClicked);
+                    .on('click',linkClicked)
+                    .on('mouseover',linkMouseover)
+                    .on('mouseout',linkMouseout);
 
                 const linkTextBox = linkContainer.append('rect')
                     .attr('width',50)
@@ -100,18 +95,35 @@
                 const node = nodeContainer.append("circle")
                     .attr("r",10)
                     .attr("fill",nodeInactiveColor)
-                    // .attr("opacity",0.6)
                     .on('click',nodeClicked)
                     .on('mouseover',nodeMouseover)
                     .on('mouseout',nodeMouseout);
 
                 const nodeText = nodeContainer.append("text")
                     .text(d => d.name)
-                        .attr('filter','url(#solid)')
                         .attr('dx',12)
                         .attr('dy',-8)
+                        .attr('fill','white')
                         .attr('opacity',0)
                         .attr('pointer-events','none'); //  initially invisible, becomes visible on click (hopefully)
+
+                const nodeTextBox = nodeContainer.append("rect")
+                    .attr('width', function (d) {
+                        const bbox = this.parentNode.childNodes[1].getBBox();   //  how stable is this? If I add more elements to the <g> then I'll have to update this
+                        return bbox.width + 10;
+                    })
+                    .attr('height', function () {
+                        const bbox = this.parentNode.childNodes[1].getBBox();
+                        return bbox.height + 6;
+                    })
+                    .attr('x',5)
+                    .attr('y',-23)
+                    .attr('rx',5)
+                    .attr('fill','black')
+                    .attr('opacity',0)
+                    .attr('pointer-events','none');
+
+                nodeTextBox.lower();
 
                 //  create a simulation with a few forces to push nodes around
                 const simulation = d3.forceSimulation(nodes)
@@ -156,7 +168,7 @@
                     } else if (2 <= d & d < 3) {
                         return `\$${Math.round(v/(1e6))}M`;
                     } else if (3 <= d & d < 4) {
-                        return `\$${Math.round(v/(1e9))}B`;
+                        return `\$${Math.round(v/(1e9))}B`; //  maybe a little presumptuous
                     } else {
                         return `\$${v}`;
                     }
@@ -197,26 +209,54 @@
                     node
                         .attr('fill', d => d.active? nodeActiveColor : nodeInactiveColor);
 
+                    nodeTextBox
+                        .attr('opacity', d => d.active? textBoxActiveOpacity : textBoxInactiveOpacity);
+
                     nodeText
-                        .attr('opacity', d => d.active? 1 : 0);
+                        .attr('opacity', d => d.active? textActiveOpacity : textInactiveOpacity);
                 }
 
                 function linkClicked(event, d) {
-                    var active = d.active? false : true;
-                    d.active = active;
-
-                    link
-                        .attr('stroke', d => d.active? linkActiveColor : linkInactiveColor)
-                        .attr('stroke-opacity', d => d.active? 1 : 0.6);
-
-                    linkTextBox
-                        .attr('opacity',d => d.active? 0.7 : 0);
-
-                    linkText
-                        .attr('opacity',d => d.active? 1 : 0);
-
+                    if (d.toggle == null) {
+                        d.toggle = true;
+                    } else {
+                        d.toggle = d.toggle? false : true;
+                    };
+                    d.active = d.toggle;
+                    linkUpdate(d);
                     d3.select(this.parentNode).raise();
                 };
+
+                function linkMouseover(event, d) {
+                    if (d.toggle) {
+                        // do nothing
+                    } else {
+                        d.active = true;
+                        linkUpdate(d)
+                        d3.select(this.parentNode).raise()
+                    }
+                }
+
+                function linkMouseout(event, d) {
+                    if (d.toggle) {
+                        // do nothing
+                    } else {
+                        d.active = false;
+                        linkUpdate(d)
+                    }
+                }
+
+                function linkUpdate(d) {
+                    link
+                        .attr('stroke', d => d.active? linkActiveColor : linkInactiveColor)
+                        .attr('stroke-opacity', d => d.active? linkActiveOpacity : linkInactiveOpacity);
+
+                    linkTextBox
+                        .attr('opacity', d => d.active? textBoxActiveOpacity : textBoxInactiveOpacity);
+                    
+                    linkText
+                        .attr('opacity', d => d.active? textActiveOpacity : textInactiveOpacity);
+                }
 
                 //  restarts the simulation when drag starts, fixes the subject position
                 function dragstarted(event, d) {

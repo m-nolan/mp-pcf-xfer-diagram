@@ -13,6 +13,7 @@ def parse_args():
     parser.add_argument('data_dir')
     parser.add_argument('-o','--output_dir',default=None)
     parser.add_argument('-m','--min_val',default=100000,type=int)
+    parser.add_argument('--filetype',choices=['json','csv'],default='json',type=str)
     args = parser.parse_args()
     if args.output_dir == None:
         args.output_dir = args.data_dir
@@ -50,6 +51,14 @@ def get_pcf_df(pcf_table,xfer_df):
     pcf_regnum_list = np.unique([xfer_df.source.values,xfer_df.target.values])
     return pcf_table[pcf_table.PCFRegNumb.isin(pcf_regnum_list)][['PCFRegNumb','Committee']]
 
+def write_xfer_data(filetype,output_dir,pcf_df,xfer_df,min_val):
+    if filetype=='csv':
+        write_xfer_csv(output_dir,pcf_df,xfer_df,min_val)
+    elif filetype=='json':
+        write_xfer_json(output_dir,pcf_df,xfer_df,min_val)
+    else:
+        raise('Invalid filetype value. Must be ''json'' or ''csv''')
+
 def write_xfer_json(output_dir,pcf_df,xfer_df,min_val):
     d3_dict = {
         'nodes': [{'id': row.PCFRegNumb, 'name': row.Committee} for _, row in pcf_df.iterrows()], # row.name gives you the index value. Lesson learned.
@@ -57,6 +66,10 @@ def write_xfer_json(output_dir,pcf_df,xfer_df,min_val):
     }
     with open(os.path.join(output_dir,f'./xfer_data_{min_val}.json'),'w') as wf:
         wf.write(json.dumps(d3_dict))
+
+def write_xfer_csv(output_dir,pcf_df,xfer_df,min_val):
+    pcf_df[['id','name']].to_csv(os.path.join(output_dir,f'./pcf_data_{min_val}.csv'))
+    xfer_df[['source','target','value']].to_csv(os.path.join(output_dir,f'./xfer_data_{min_val}.csv'))
 
 def main():
     args = parse_args()
