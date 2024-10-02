@@ -3,6 +3,14 @@
     <head>
         <title>d3 Network Diagram Example</title>
         <script src="https://d3js.org/d3.v6.min.js"></script>
+        <style>
+            circle[active="true"] {
+                color: #9c672f;
+            }
+            circle[active="false"] {
+                color: #68a372;
+            }
+        </style>
     </head>
     <body>
         <div id="chart"></div>
@@ -94,7 +102,7 @@
 
                 const node = nodeContainer.append("circle")
                     .attr("r",10)
-                    .attr("fill",nodeInactiveColor)
+                    .attr("fill",nodeInactiveColor) //  fit this to different node types?
                     .on('click',nodeClicked)
                     .on('mouseover',nodeMouseover)
                     .on('mouseout',nodeMouseout);
@@ -207,6 +215,7 @@
 
                 function nodeUpdate(d) {
                     node
+                        // .attr('active', d => d.active);
                         .attr('fill', d => d.active? nodeActiveColor : nodeInactiveColor);
 
                     nodeTextBox
