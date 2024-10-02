@@ -4,27 +4,27 @@
         <title>d3 Network Diagram Example</title>
         <script src="https://d3js.org/d3.v6.min.js"></script>
         <style>
-            circle[active="true"] {
-                color: #9c672f;
-            }
-            circle[active="false"] {
-                color: #68a372;
+            text {
+                font-family: Arial, Helvetica, sans-serif;
             }
         </style>
     </head>
     <body>
         <div id="chart"></div>
         <script>
-            d3.json("https://raw.githubusercontent.com/m-nolan/mp-pcf-xfer-diagram/main/data_noind/xfer_data_100000.json").then(function(data) {
+            d3.json("https://raw.githubusercontent.com/m-nolan/mp-pcf-xfer-diagram/main/data/xfer_data_100000_publish.json").then(function(data) {
                 //  cribbed this from: https://observablehq.com/@d3/disjoint-force-directed-graph/2
 
                 //  chart dimensions
-                const width = 1500;
-                const height = 1500;
+                const width = 1200;
+                const height = 1100;
 
                 //  colors, links and nodes
                 const nodeActiveColor = "#9c672f";
                 const nodeInactiveColor = "#68a372";
+                const demNodeInactiveColor = "#1d81a2";
+                const repNodeInactiveColor = "#c71e1d";
+                const purNodeInactiveColor = "#7f22c7";
                 const linkActiveColor = "#000";
                 const linkInactiveColor = "#999";
                 const linkActiveOpacity = 1;
@@ -33,6 +33,8 @@
                 const textInactiveOpacity = 0;
                 const textBoxActiveOpacity = 0.7;
                 const textBoxInactiveOpacity = 0;
+                const nodeInactiveRadius = 10;
+                const nodeActiveRadius = 12;
 
                 //  force simulation: create a function to "produce the same result"
                 const links = data.links.map(d => ({...d}));
@@ -43,7 +45,7 @@
                     .attr("width", width)
                     .attr("height", height)
                     .attr("viewBox", [-width / 2, -height / 2, width, height])
-                    .attr("style", "max-width: 100%; height: auto;");
+                    .attr("style", "max-width: 100%; height: auto; outline: solid black");
 
                 svg.append('defs')
                     .append('defs')
@@ -102,8 +104,8 @@
                     .join("g");
 
                 const node = nodeContainer.append("circle")
-                    .attr("r",10)
-                    .attr("fill",nodeInactiveColor) //  fit this to different node types?
+                    .attr("r",nodeInactiveRadius)
+                    .attr("fill", d => nodeDefaultColor(d)) //  fit this to different node types?
                     .attr("stroke", "#000")
                     .attr("stroke-width", d => (d.kind=='T')? 2 : 0)
                     .on('click',nodeClicked)
@@ -112,8 +114,8 @@
 
                 const nodeText = nodeContainer.append("text")
                     .text(d => d.name)
-                        .attr('dx',12)
-                        .attr('dy',-8)
+                        .attr('dx',-40)
+                        .attr('dy',-14)
                         .attr('fill','white')
                         .attr('opacity',0)
                         .attr('pointer-events','none'); //  initially invisible, becomes visible on click (hopefully)
@@ -127,14 +129,157 @@
                         const bbox = this.parentNode.childNodes[1].getBBox();
                         return bbox.height + 6;
                     })
-                    .attr('x',5)
-                    .attr('y',-23)
+                    .attr('x',-46)
+                    .attr('y',-29)
                     .attr('rx',5)
                     .attr('fill','black')
                     .attr('opacity',0)
                     .attr('pointer-events','none');
 
                 nodeTextBox.lower();
+
+                //  title
+                svg.append('g')
+                    .append('text')
+                        .text('Minnesota Political Cash Flows, 2024')
+                        .attr('text-anchor','middle')
+                        .attr('font-size','2em')
+                        .attr('y',-height/2+30)
+                        .attr('x',0);
+
+                //  legend
+                legend = svg.append('g');
+                legend.append('rect')
+                    .attr('x',-width/2+5)
+                    .attr('y',-height/2+5)
+                    .attr('width',200)
+                    .attr('height',335)
+                    .attr('stroke','black')
+                    .attr('stroke-width',4)
+                    .attr('fill','white');
+                legend.append('text')
+                    .text('Legend')
+                    .attr('x',-width/2+5+35)
+                    .attr('y',-height/2+5+20)
+                    .attr('font-size',20)
+                    .attr('dominant-baseline','middle');
+                legend.append('circle') // democrat
+                    .attr('fill',demNodeInactiveColor)
+                    .attr('r',nodeInactiveRadius)
+                    .attr('cx',-width/2+5+20)
+                    .attr('cy',-height/2+5+50);
+                legend.append('text')
+                    .text('DFL-Leaning')
+                    .attr('x',-width/2+5+35)
+                    .attr('y',-height/2+5+50)
+                    .attr('dominant-baseline','middle');
+                legend.append('circle') // republican
+                    .attr('fill',repNodeInactiveColor)
+                    .attr('r',nodeInactiveRadius)
+                    .attr('cx',-width/2+5+20)
+                    .attr('cy',-height/2+5+80);
+                legend.append('text')
+                    .text('GOP-Leaning')
+                    .attr('x',-width/2+5+35)
+                    .attr('y',-height/2+5+80)
+                    .attr('dominant-baseline','middle');
+                legend.append('circle') // purple
+                    .attr('fill',purNodeInactiveColor)
+                    .attr('r',nodeInactiveRadius)
+                    .attr('cx',-width/2+5+20)
+                    .attr('cy',-height/2+5+110);
+                legend.append('text')
+                    .text('Center')
+                    .attr('x',-width/2+5+35)
+                    .attr('y',-height/2+5+110)
+                    .attr('dominant-baseline','middle');
+                legend.append('circle') // individual/no affiliation
+                    .attr('fill',linkInactiveColor)
+                    .attr('r',nodeInactiveRadius)
+                    .attr('cx',-width/2+5+20)
+                    .attr('cy',-height/2+5+140);
+                legend.append('text')
+                    .text('Indiv. or Unclear')
+                    .attr('x',-width/2+5+35)
+                    .attr('y',-height/2+5+140)
+                    .attr('dominant-baseline','middle');
+                legend.append('circle') // individual/no affiliation
+                    .attr('fill','white')
+                    .attr('stroke','black')
+                    .attr('stroke-width',2)
+                    .attr('r',nodeInactiveRadius)
+                    .attr('cx',-width/2+5+20)
+                    .attr('cy',-height/2+5+170);
+                legend.append('text')
+                    .text('CFB Registered')
+                    .attr('x',-width/2+5+35)
+                    .attr('y',-height/2+5+170)
+                    .attr('dominant-baseline','middle');
+                legend.append('text')
+                    .text('Mouse-over or click to')
+                    .attr('x',-width/2+5+10)
+                    .attr('y',-height/2+5+210)
+                    .attr('dominant-baseline','middle')
+                    .attr('text-anchor','left');
+                legend.append('text')
+                    .text('see organization names')
+                    .attr('x',-width/2+5+10)
+                    .attr('y',-height/2+5+225)
+                    .attr('dominant-baseline','middle')
+                    .attr('text-anchor','left');
+                legend.append('text')
+                    .text('and transfer amounts.')
+                    .attr('x',-width/2+5+10)
+                    .attr('y',-height/2+5+240)
+                    .attr('dominant-baseline','middle')
+                    .attr('text-anchor','left');
+                legend.append('text')
+                    .text('Click and drag nodes to')
+                    .attr('x',-width/2+5+10)
+                    .attr('y',-height/2+5+265)
+                    .attr('dominant-baseline','middle')
+                    .attr('text-anchor','left');
+                legend.append('text')
+                    .text('move network.')
+                    .attr('x',-width/2+5+10)
+                    .attr('y',-height/2+5+280)
+                    .attr('dominant-baseline','middle')
+                    .attr('text-anchor','left');
+                legend.append('text')
+                    .text('Arrow width scales with')
+                    .attr('x',-width/2+5+10)
+                    .attr('y',-height/2+5+305)
+                    .attr('dominant-baseline','middle')
+                    .attr('text-anchor','left');
+                legend.append('text')
+                    .text('amount transferred.')
+                    .attr('x',-width/2+5+10)
+                    .attr('y',-height/2+5+320)
+                    .attr('dominant-baseline','middle')
+                    .attr('text-anchor','left');
+
+                //  data description
+                detail = svg.append('g');
+                detail.append('text')
+                    .text('This graphic shows the movement of funding for state political campaigns so far in 2024. \
+                        Campaigns are required to regularly report to the MN Campaign Finance')//Political \
+                        // funding regulated by the Federal Election Commission are not included in the graphic.')
+                    .attr('text-anchor','beginning')
+                    .attr('y',height/2-45)
+                    .attr('x',-width/2+5);
+                detail.append('text')
+                    .text('Board. Federal political funding is not included. Arrows represent cumulative payments >$100k between people and organizations in 2024.')
+                    .attr('text-anchor','beginning')
+                    .attr('y',height/2-30)
+                    .attr('x',-width/2+5);
+
+                //  byline and link
+                svg.append('g')
+                    .append('text')
+                        .text('By: Michael Nolan. Data source: https://cfb.mn.gov')
+                        .attr('text-anchor','beginning')
+                        .attr('y',height/2-10)
+                        .attr('x',-width/2+5)
 
                 //  create a simulation with a few forces to push nodes around
                 const simulation = d3.forceSimulation(nodes)
@@ -185,6 +330,20 @@
                     }
                 }
 
+                function nodeDefaultColor(d) {
+                    switch (d.party) {
+                        case null:
+                        case "X": 
+                            return linkInactiveColor;
+                        case "D": 
+                            return demNodeInactiveColor;
+                        case "R": 
+                            return repNodeInactiveColor;
+                        case "P": 
+                            return purNodeInactiveColor;
+                    }
+                }
+
                 function nodeClicked(event, d) {
                     if (event.defaultPrevented) return;
                     if (d.toggle == null) {    //  hasn't been clicked on yet
@@ -219,7 +378,8 @@
                 function nodeUpdate(d) {
                     node
                         // .attr('active', d => d.active);
-                        .attr('fill', d => d.active? nodeActiveColor : nodeInactiveColor);
+                        // .attr('fill', d => d.active? nodeActiveColor : nodeDefaultColor(d));
+                        .attr('r', d => d.active? nodeActiveRadius : nodeInactiveRadius);
 
                     nodeTextBox
                         .attr('opacity', d => d.active? textBoxActiveOpacity : textBoxInactiveOpacity);
