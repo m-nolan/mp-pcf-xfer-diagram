@@ -50,7 +50,7 @@
                         .append('marker')
                             .attr('id', 'arrowhead')
                             .attr("viewBox", "0 0 10 10")
-                            .attr('refX', 17)
+                            .attr('refX', "1%")
                             .attr('refY', 5)
                             .attr('orient', 'auto')
                             .attr('markerWidth', 3)
@@ -70,10 +70,11 @@
                 const link = linkContainer.append("line")
                     .attr("stroke", linkInactiveColor)
                     .attr("stroke-opacity", 0.6)
-                    .attr("stroke-width", 4)
+                    .attr("stroke-width", d => 4*Math.cbrt(d.value)/Math.cbrt(100000))
                     // .attr("class", "links")
                     .attr("id", (d, i) => `link${i}`)
                     .attr("marker-end", "url(#arrowhead)")
+                        // .attr('refX', d => 17*Math.sqrt(100000)/Math.sqrt(d.value))
                     .on('click',linkClicked)
                     .on('mouseover',linkMouseover)
                     .on('mouseout',linkMouseout);
@@ -103,6 +104,8 @@
                 const node = nodeContainer.append("circle")
                     .attr("r",10)
                     .attr("fill",nodeInactiveColor) //  fit this to different node types?
+                    .attr("stroke", "#000")
+                    .attr("stroke-width", d => (d.kind=='T')? 2 : 0)
                     .on('click',nodeClicked)
                     .on('mouseover',nodeMouseover)
                     .on('mouseout',nodeMouseout);

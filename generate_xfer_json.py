@@ -64,7 +64,7 @@ def get_pcf_df(pcf_table,id_xfer_df,noid_nonind_xfer_df,noid_ind_xfer_df,ind_fla
             *noid_nonind_xfer_df.PCFRegNumb.values,
     ]
     if ind_flag:
-        pcf_regnum_list.append(*noid_ind_xfer_df.PCFRegNumb.values)
+        pcf_regnum_list.extend(noid_ind_xfer_df.PCFRegNumb.values)
     pcf_regnum_list = np.unique(pcf_regnum_list).astype(int)
     id_pcf_df = pcf_table[pcf_table.PCFRegNumb.isin(pcf_regnum_list)][['PCFRegNumb','Committee']]
     noid_nonind_df = pd.DataFrame(noid_nonind_xfer_df.DonorName.unique(),columns=['Committee'])
