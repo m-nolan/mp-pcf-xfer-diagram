@@ -57,7 +57,14 @@ def get_noid_xfer_df(donor_table,min_val):
     return nonind_xfer_df[nonind_xfer_df.value >= min_val], ind_xfer_df[ind_xfer_df.value >= min_val]
 
 def get_pcf_df(pcf_table,id_xfer_df,noid_nonind_xfer_df,noid_ind_xfer_df):
-    pcf_regnum_list = np.unique([id_xfer_df.source.values,id_xfer_df.target.values])
+    pcf_regnum_list = np.unique(
+        [
+            *id_xfer_df.source.values,
+            *id_xfer_df.target.values,
+            *noid_nonind_xfer_df.PCFRegNumb.values,
+            *noid_ind_xfer_df.PCFRegNumb.values,
+        ]
+    ).astype(int)
     id_pcf_df = pcf_table[pcf_table.PCFRegNumb.isin(pcf_regnum_list)][['PCFRegNumb','Committee']]
     noid_nonind_df = pd.DataFrame(noid_nonind_xfer_df.DonorName.unique(),columns=['Committee'])
     noid_ind_df = pd.DataFrame(noid_ind_xfer_df.DonorName.unique(),columns=['Committee'])
