@@ -14,6 +14,7 @@ def parse_args():
     parser.add_argument('-o','--output_dir',default=None)
     parser.add_argument('-m','--min_val',default=100000,type=int)
     parser.add_argument('--filetype',choices=['json','csv'],default='json',type=str)
+    parser.add_argument('-i','--ind',action='store_true',default=False)
     args = parser.parse_args()
     if args.output_dir == None:
         args.output_dir = args.data_dir
@@ -56,29 +57,32 @@ def get_noid_xfer_df(donor_table,min_val):
     ind_xfer_df.columns = ['DonorName','Committee','Category','PCFRegNumb','value']
     return nonind_xfer_df[nonind_xfer_df.value >= min_val], ind_xfer_df[ind_xfer_df.value >= min_val]
 
-def get_pcf_df(pcf_table,id_xfer_df,noid_nonind_xfer_df,noid_ind_xfer_df):
-    pcf_regnum_list = np.unique(
-        [
+def get_pcf_df(pcf_table,id_xfer_df,noid_nonind_xfer_df,noid_ind_xfer_df,ind_flag):
+    pcf_regnum_list = [
             *id_xfer_df.source.values,
             *id_xfer_df.target.values,
             *noid_nonind_xfer_df.PCFRegNumb.values,
-            *noid_ind_xfer_df.PCFRegNumb.values,
-        ]
-    ).astype(int)
+    ]
+    if ind_flag:
+        pcf_regnum_list.append(*noid_ind_xfer_df.PCFRegNumb.values)
+    pcf_regnum_list = np.unique(pcf_regnum_list).astype(int)
     id_pcf_df = pcf_table[pcf_table.PCFRegNumb.isin(pcf_regnum_list)][['PCFRegNumb','Committee']]
     noid_nonind_df = pd.DataFrame(noid_nonind_xfer_df.DonorName.unique(),columns=['Committee'])
     noid_ind_df = pd.DataFrame(noid_ind_xfer_df.DonorName.unique(),columns=['Committee'])
     return id_pcf_df, noid_nonind_df, noid_ind_df
 
-def collect_pcf_df(id_pcf_df,noid_nonind_pcf_df,noid_ind_pcf_df):
+def collect_pcf_df(id_pcf_df,noid_nonind_pcf_df,noid_ind_pcf_df,ind_flag):
     id_pcf_df['Kind'] = 'T'
     noid_nonind_pcf_df['Kind'] = 'O'
     noid_ind_pcf_df['Kind'] = 'I'
-    noid_pcf_df = pd.concat([noid_nonind_pcf_df,noid_ind_pcf_df],ignore_index=True)
+    if ind_flag:
+        noid_pcf_df = pd.concat([noid_nonind_pcf_df,noid_ind_pcf_df],ignore_index=True)
+    else:
+        noid_pcf_df = noid_nonind_pcf_df
     noid_pcf_df['PCFRegNumb'] = np.arange(len(noid_pcf_df))
     return pd.concat([id_pcf_df,noid_pcf_df],ignore_index=True)
 
-def collect_xfer_df(id_xfer_df,noid_nonind_xfer_df,noid_ind_xfer_df,pcf_df):
+def collect_xfer_df(id_xfer_df,noid_nonind_xfer_df,noid_ind_xfer_df,pcf_df,ind_flag):
     # add id to noid orgs in noid xfer dataframes
     noid_nonind_xfer_df = noid_nonind_xfer_df.merge(pcf_df[['PCFRegNumb','Committee']],how='left',left_on='DonorName',right_on='Committee')
     noid_nonind_xfer_df.columns = ['DonorName','DonorType','Committee','Category','target','value','source','DonorNameDrop']
@@ -86,7 +90,10 @@ def collect_xfer_df(id_xfer_df,noid_nonind_xfer_df,noid_ind_xfer_df,pcf_df):
     noid_ind_xfer_df = noid_ind_xfer_df.merge(pcf_df[['PCFRegNumb','Committee']],how='left',left_on='DonorName',right_on='Committee')
     noid_ind_xfer_df.columns = ['DonorName','Committee','Category','target','value','source','DonorNameDrop']
     noid_ind_xfer_df = noid_ind_xfer_df.drop('DonorNameDrop',axis=1)
-    noid_xfer_df = pd.concat([noid_nonind_xfer_df,noid_ind_xfer_df])
+    if ind_flag:
+        noid_xfer_df = pd.concat([noid_nonind_xfer_df,noid_ind_xfer_df],ignore_index=True)
+    else:
+        noid_xfer_df = noid_nonind_xfer_df
     return pd.concat([id_xfer_df[['source','target','value']],noid_xfer_df[['source','target','value']]])
 
 def write_xfer_data(filetype,output_dir,pcf_df,xfer_df,min_val):
@@ -114,9 +121,9 @@ def main():
     donor_table, pcf_table, xfer_table = get_cfb_data(args.data_dir)
     id_xfer_df = get_xfer_df(xfer_table,args.min_val)
     noid_nonind_xfer_df, noid_ind_xfer_df = get_noid_xfer_df(donor_table,args.min_val)
-    id_pcf_df, noid_nonind_pcf_df, noid_ind_pcf_df = get_pcf_df(pcf_table,id_xfer_df,noid_nonind_xfer_df,noid_ind_xfer_df)
-    pcf_df = collect_pcf_df(id_pcf_df,noid_nonind_pcf_df,noid_ind_pcf_df)
-    xfer_df = collect_xfer_df(id_xfer_df,noid_nonind_xfer_df,noid_ind_xfer_df,pcf_df)
+    id_pcf_df, noid_nonind_pcf_df, noid_ind_pcf_df = get_pcf_df(pcf_table,id_xfer_df,noid_nonind_xfer_df,noid_ind_xfer_df,args.ind)
+    pcf_df = collect_pcf_df(id_pcf_df,noid_nonind_pcf_df,noid_ind_pcf_df,args.ind)
+    xfer_df = collect_xfer_df(id_xfer_df,noid_nonind_xfer_df,noid_ind_xfer_df,pcf_df,args.ind)
     write_xfer_json(args.output_dir,pcf_df,xfer_df,args.min_val)
 
 if __name__ == "__main__":
