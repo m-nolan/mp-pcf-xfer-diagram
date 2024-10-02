@@ -94,7 +94,8 @@ def collect_xfer_df(id_xfer_df,noid_nonind_xfer_df,noid_ind_xfer_df,pcf_df,ind_f
         noid_xfer_df = pd.concat([noid_nonind_xfer_df,noid_ind_xfer_df],ignore_index=True)
     else:
         noid_xfer_df = noid_nonind_xfer_df
-    return pd.concat([id_xfer_df[['source','target','value']],noid_xfer_df[['source','target','value']]])
+    xfer_df = pd.concat([id_xfer_df[['source','target','value']],noid_xfer_df[['source','target','value']]])
+    return xfer_df[xfer_df.source != xfer_df.target]
 
 def write_xfer_data(filetype,output_dir,pcf_df,xfer_df,min_val):
     if filetype=='csv':
@@ -106,7 +107,7 @@ def write_xfer_data(filetype,output_dir,pcf_df,xfer_df,min_val):
 
 def write_xfer_json(output_dir,pcf_df,xfer_df,min_val):
     d3_dict = {
-        'nodes': [{'id': row.PCFRegNumb, 'name': row.Committee} for _, row in pcf_df.iterrows()], # row.name gives you the index value. Lesson learned.
+        'nodes': [{'id': row.PCFRegNumb, 'name': row.Committee, 'kind': row.Kind} for _, row in pcf_df.iterrows()], # row.name gives you the index value. Lesson learned.
         'links': [{'source': int(row.source), 'target': int(row.target), 'value': row.value} for _, row in xfer_df.iterrows()],
     }
     with open(os.path.join(output_dir,f'./xfer_data_{min_val}.json'),'w') as wf:
