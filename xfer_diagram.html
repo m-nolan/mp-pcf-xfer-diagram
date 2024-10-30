@@ -12,7 +12,7 @@
     <body>
         <div id="chart"></div>
         <script>
-            d3.json("https://raw.githubusercontent.com/m-nolan/mp-pcf-xfer-diagram/main/data/xfer_data_100000_publish.json").then(function(data) {
+            d3.json("https://raw.githubusercontent.com/m-nolan/mp-pcf-xfer-diagram/main/data-10/xfer_data_100000_publish.json").then(function(data) {
                 //  cribbed this from: https://observablehq.com/@d3/disjoint-force-directed-graph/2
 
                 //  chart dimensions
@@ -45,7 +45,7 @@
                     .attr("width", width)
                     .attr("height", height)
                     .attr("viewBox", [-width / 2, -height / 2, width, height])
-                    .attr("style", "max-width: 100%; height: auto; outline: solid black");
+                    .attr("style", "max-width: 100%; height: auto;");
 
                 svg.append('defs')
                     .append('defs')
@@ -159,9 +159,10 @@
                     .attr('fill','white');
                 legend.append('text')
                     .text('Legend')
-                    .attr('x',-width/2+5+35)
+                    .attr('x',-width/2+5+100)
                     .attr('y',-height/2+5+20)
                     .attr('font-size',20)
+                    .attr('text-anchor', 'middle')
                     .attr('dominant-baseline','middle');
                 legend.append('circle') // democrat
                     .attr('fill',demNodeInactiveColor)
@@ -259,19 +260,19 @@
                     .attr('text-anchor','left');
 
                 //  data description
-                detail = svg.append('g');
-                detail.append('text')
-                    .text('This graphic shows the movement of funding for state political campaigns so far in 2024. \
-                        Campaigns are required to regularly report to the MN Campaign Finance')//Political \
-                        // funding regulated by the Federal Election Commission are not included in the graphic.')
-                    .attr('text-anchor','beginning')
-                    .attr('y',height/2-45)
-                    .attr('x',-width/2+5);
-                detail.append('text')
-                    .text('Board. Federal political funding is not included. Arrows represent cumulative payments >$100k between people and organizations in 2024.')
-                    .attr('text-anchor','beginning')
-                    .attr('y',height/2-30)
-                    .attr('x',-width/2+5);
+                // detail = svg.append('g');
+                // detail.append('text')
+                //     .text('This graphic shows the movement of funding for state political campaigns so far in 2024. \
+                //         Campaigns are required to regularly report to the MN Campaign Finance')//Political \
+                //         // funding regulated by the Federal Election Commission are not included in the graphic.')
+                //     .attr('text-anchor','beginning')
+                //     .attr('y',height/2-45)
+                //     .attr('x',-width/2+5);
+                // detail.append('text')
+                //     .text('Board. Federal political funding is not included. Arrows represent cumulative payments >$100k between people and organizations in 2024.')
+                //     .attr('text-anchor','beginning')
+                //     .attr('y',height/2-30)
+                //     .attr('x',-width/2+5);
 
                 //  byline and link
                 svg.append('g')
